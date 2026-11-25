@@ -19,6 +19,7 @@ import transformers
 
 import numpy as np
 import pyarrow as pa
+import pyarrow.dataset as ds
 import importlib.metadata
 import pyarrow.parquet as pq
 
@@ -287,7 +288,16 @@ def prepare_default_data_image(num_samples=None):
     DATASET_NAME = "lmms-lab-encoder/VQAv2"
     NUM_SAMPLES = 24 if num_samples is None else num_samples
     set_seed(42)
-    default_dataset = datasets.load_dataset(DATASET_NAME, split="test", streaming=True).shuffle(42).take(NUM_SAMPLES)
+    dataset_kwargs = (
+        {"fragment_scan_options": ds.ParquetFragmentScanOptions(pre_buffer=False)}
+        if Version(datasets.__version__) >= Version("4.2.0")
+        else {}
+    )
+    default_dataset = (
+        datasets.load_dataset(DATASET_NAME, split="test", streaming=True, **dataset_kwargs)
+        .shuffle(42)
+        .take(NUM_SAMPLES)
+    )
     return default_dataset.map(lambda x: preprocess_fn(x), remove_columns=default_dataset.column_names)
 
 
